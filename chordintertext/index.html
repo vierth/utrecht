@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<script src="d3.min.js"></script>
+<script src="edgesaligned.js"></script>
+<style>
+.hidden{
+  display:none;
+}
+</style>
+</head>
+<body>
+    
+<script>
+
+
+var fullwidth = 1400;
+var width = 800
+var height = 900;
+var outerradius = Math.min(width-90, height-140) / 2;
+var innerradius = outerradius - 20; 
+
+var cscale = d3.scaleLinear().domain([0, data.length - 1]); 
+
+
+var color = d3.scaleOrdinal(["#dfc59a",
+"#82cce7",
+"#dcb1d5",
+"#a5dab5"]);
+
+
+var svg = d3.select('body')
+    .append('svg')
+    .attr('width', fullwidth)
+    .attr('height', height)
+    .append('g')
+    .attr('transform', 'translate(' + (width / 2) +
+    ',' + (height / 2) + ')');
+
+
+var arc = d3.arc()
+    .innerRadius(innerradius)             
+    .outerRadius(outerradius)
+    
+    
+var pie = d3.pie()
+    .value(function(d) { return d.count; })
+    .sort(null);
+
+var g = svg.selectAll('.arc')
+    .data(pie(data))
+    .enter()
+    .append('g');
+
+g.append("path")
+    .attr('d', arc)
+    .attr('fill', function(d, i) { return color(cscale(i)) });
+
+g.append("text")
+    .attr("transform", function(d) { return "translate(" + arc.centroid(d) + ")"; })
+    .attr("dy", ".35em")
+    .attr("text-anchor","middle")
+    //.text(function(d) { return d.data.label.slice(d.data.label.search(" "),); });
+    .text(function(d) {return d.data.label})
+var textdata = {};
+var angledata = d3.selectAll('path').data()
+
+for (i=0; i < angledata.length;i++){
+    angledata[i].scale = d3.scaleLinear().domain([0,angledata[i].value]).range([angledata[i].startAngle, angledata[i].endAngle])
+    testscale = d3.scaleLinear().domain([0,angledata[i].value]).range([angledata[i].startAngle, angledata[i].endAngle])
+}
+
+var ribbon = d3.ribbon()
+    .radius(innerradius);
+
+let ribbondata = [];
+
+for (i = 0; i < edges.length; i++) {
+    let edge = edges[i]
+    let edgedata = {}
+    for (j = 0; j < angledata.length; j++) {
+        if (edge.start == angledata[j].data.label){
+            edgedata.source = {startAngle:angledata[j].scale(edge.firststart),endAngle:angledata[j].scale(edge.firstend)}
+            edgedata.origin = edge.start
+        }
+        if (edge.end == angledata[j].data.label){
+            edgedata.target = {startAngle:angledata[j].scale(edge.secondstart),endAngle:angledata[j].scale(edge.secondend)}
+        }
+    }
+    edgedata.sourcetitle = edge.start
+    edgedata.targettitle = edge.end
+    edgedata.sourcequote = edge.firstquote
+    edgedata.targetquote = edge.secondquote
+    ribbondata.push(edgedata)
+}
+
+
+
+
+// ribbon = ribbon({
+//   source: {startAngle: 0, endAngle: 3.14/6},
+//   target: {startAngle: 3.14, endAngle: 3.14+3.14/6}
+// });
+
+// This section for many docs
+// for (i = 0; i < ribbondata.length; i ++){
+//     g.append("path")
+//     .style("style",color(parseInt(ribbondata[i].origin.slice(ribbondata[i].origin.search(" ")+1,))))
+//     .style("stroke-opacity", 0.75)
+//     .style("fill-opacity",0.1)
+//     .style("stroke-width", ".1px")
+//     .attr("d", ribbon(ribbondata[i]))
+//     .style("fill",color(parseInt(ribbondata[i].origin.slice(ribbondata[i].origin.search(" ")+1,))))
+// }
+
+let currentdata = 0;
+
+let ribbongroup = g.append("g")
+    .attr("class","ribbons")
+    .selectAll("path")
+    .data(ribbondata)
+    .enter().append("path")
+    .attr("d", ribbon)
+    .style("stroke-opacity", 0.75)
+    .style("fill-opacity",0.2)
+    .style("stroke-width", "1px")
+    .style("fill","magenta")
+    .on("mouseover",function(){
+        d3.select(this).style('fill-opacity', 0.9).transition()
+    })
+    .on("mouseout",function(){
+        d3.select(this).style('fill-opacity',0.2).transition()
+    })
+    .on("click", function(d){
+        currentdata = d
+        charoffset = 0
+        if (d.sourcequote.length < 75) {
+            cos = d.sourcequote.length
+        } else {
+            cos = charoffset + 75
+        }
+        qa.text("Intertextuality ("+ charoffset+"-"+cos+" of "+ d.targetquote.length + " 字 alignment)")
+        displayquote(d)
+        })
+
+function displayquote(d){
+    t1.classed("hidden", false).text("Text 1: " + d.sourcetitle) 
+    t2.classed("hidden", false).text("Text 2: " + d.targettitle) 
+    leftb.classed("hidden", false)
+    rightb.classed("hidden", false)
+    if (d.sourcequote.length < 75) {
+        cos = d.sourcequote.length
+    } else {
+        cos = charoffset + 75
+    }
+    
+    qa.text("Intertextuality ("+ charoffset+"-"+cos+" of "+ d.targetquote.length + " 字 alignment)")
+    for (i = 0; i < 75; i ++){
+        
+        let selector = i + charoffset
+        let onec = d3.select("#one"+i).text(d.sourcequote[selector])
+        let twoc = d3.select("#two"+i).text(d.targetquote[selector])
+        if (d.sourcequote[selector] == d.targetquote[selector]){
+            onec.attr("fill","green")
+            twoc.attr("fill","green")
+        } else if (d.sourcequote[selector] == " " || d.targetquote[selector] == " ") {
+            onec.attr("fill","black")
+            twoc.attr("fill","black")
+        } else {
+            onec.attr("fill","magenta")
+            twoc.attr("fill","magenta")
+        }
+    }
+}
+
+var quoteinfo = svg.append("g")
+    .attr('transform', 'translate(' + (width/2) +
+    ',' + -(height / 2)+ ')');
+    
+var qa = quoteinfo.append("text")
+    .attr("x", 40)
+    .attr("y", 80)
+    .attr("font-size",32)
+    .text("Intertextuality")
+
+let yoffset = 0;
+let xoffset = 0;
+for (i = 0; i < 80; i ++){
+    if (i % 15 == 0 && i > 0) {
+        yoffset += 120
+    }
+    xoffset = (i % 15) * 32
+    quoteinfo.append("text")
+        .attr("font-size", 28)
+        .attr("x", 40 + xoffset)
+        .attr("y", 260 + yoffset)
+        .attr("id", "one"+ i)
+        .text("")
+
+    quoteinfo.append("text")
+        .attr("font-size", 28)
+        .attr("x", 40 + xoffset)
+        .attr("y", 300 + yoffset)
+        .attr("id", "two"+ i)
+        .text("")
+}
+
+var t1 = quoteinfo.append("text").attr("x", 40).attr("y", 160).attr("font-size",28).classed("hidden", true).text("Unknown")
+var t2 = quoteinfo.append("text").attr("x", 40).attr("y", 200).attr("font-size",28).classed("hidden", true).text("Unknown")
+
+var rightb = quoteinfo.append("rect")
+            .attr("x", 440)
+            .attr("y", 160)
+            .attr("width", 60)
+            .attr("height",20)
+            .attr("rx", 4)
+            .attr("ry", 4)
+            .attr("width","60")
+            .attr("height","30")
+            .attr("fill","black")
+            .classed("hidden", true)
+            .on("click", upalignment)
+
+var leftb = quoteinfo.append("rect")
+            .attr("x", 360)
+            .attr("y", 160)
+            .attr("width", 60)
+            .attr("height",20)
+            .attr("rx", 4)
+            .attr("ry", 4)
+            .attr("width","60")
+            .attr("height","30")
+            .attr("fill","black")
+            .classed("hidden", true)
+            .on("click", downalignment)
+
+let charoffset = 0
+
+function upalignment(){
+    charoffset += 15
+    
+    displayquote(currentdata)
+}
+
+function downalignment(){
+    charoffset -= 15
+    if (charoffset< 0){
+        charoffset = 0
+    }
+    displayquote(currentdata)
+}
+</script>
+</body>
+</html>
